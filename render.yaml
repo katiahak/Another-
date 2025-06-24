@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: solana-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python mint.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: AUTHORIZED_USER_ID
+        sync: false
+      - key: RPC_HTTP_URL
+        value: https://api.mainnet-beta.solana.com
+      - key: RPC_WS_URL
+        value: wss://api.mainnet-beta.solana.com
