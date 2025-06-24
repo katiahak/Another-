@@ -42,7 +42,7 @@ try:
     USE_WEBSOCKETS = True
 except ImportError:
     USE_WEBSOCKETS = False
-MAX_WALLETS_PER_USER = 10
+MAX_WALLETS_PER_USER = 25
 POLL_INTERVAL        = float(os.getenv("POLL_INTERVAL", "30"))  # seconds
 TOKEN_PROGRAM_ID     = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 
