@@ -1,0 +1,6 @@
+python-telegram-bot==20.3
+fastapi
+uvicorn
+websockets
+base58
+requests
