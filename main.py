@@ -27,7 +27,6 @@ async def root():
     return {"status": "OK"}
 
 def run_web_server():
-    # Render passes the PORT environment variable; use it.
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(fast_app, host="0.0.0.0", port=port)
 
@@ -42,8 +41,8 @@ try:
     USE_WEBSOCKETS = True
 except ImportError:
     USE_WEBSOCKETS = False
-MAX_WALLETS_PER_USER = 20
-POLL_INTERVAL        = float(os.getenv("POLL_INTERVAL", "30"))  # seconds
+MAX_WALLETS_PER_USER = 100
+POLL_INTERVAL        = float(os.environ.get("POLL_INTERVAL", "30"))  # seconds
 TOKEN_PROGRAM_ID     = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 
 # --- Logging ---
@@ -63,7 +62,6 @@ def is_valid_address(addr: str) -> bool:
     except Exception:
         return False
 
-# RPC HTTP helpers using requests
 def rpc_request(method: str, params: list):
     payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
     try:
@@ -80,7 +78,6 @@ async def fetch_balance(addr: str) -> int:
     return 0
 
 async def fetch_token_accounts(addr: str):
-    # For getTokenAccountsByOwner, we pass the address and the token program id as strings.
     params = [addr, {"programId": TOKEN_PROGRAM_ID}, {"encoding": "jsonParsed"}]
     res = rpc_request("getTokenAccountsByOwner", params)
     if res:
@@ -149,31 +146,45 @@ async def monitor_wallet(addr: str, bot, chat_id: int):
                 sol_balance = new_bal
             await asyncio.sleep(POLL_INTERVAL)
 
-    # --- SPL Token Monitoring (Polling)
+    # --- SPL Token Monitoring (Polling) with amount threshold ---
     async def spl_poll():
         nonlocal token_balances
+        MIN_AMOUNT = 5000
         while True:
             accounts = await fetch_token_accounts(addr)
             curr = {}
             for item in accounts:
-                info = item.get("account", {}).get("data", {}).get("parsed", {}).get("info", {})
+                info = item.get("account", {}) \
+                           .get("data", {}) \
+                           .get("parsed", {}) \
+                           .get("info", {})
                 mint = info.get("mint")
-                amt = info.get("tokenAmount", {}).get("uiAmount") or 0
+                amt  = info.get("tokenAmount", {}).get("uiAmount") or 0
                 if mint:
                     curr[mint] = amt
+
             for mint, amt in curr.items():
                 prev_amt = token_balances.get(mint, 0)
-                if mint not in token_balances and amt > 0:
+
+                # New token acquired (only if amount > MIN_AMOUNT)
+                if mint not in token_balances and amt > MIN_AMOUNT:
                     text = f"New token acquired on {addr}: {mint}, amount: {amt}"
                     await bot.send_message(chat_id=chat_id, text=text)
+
+                # Received additional tokens (only if delta > MIN_AMOUNT)
                 elif amt > prev_amt:
                     diff = amt - prev_amt
-                    text = f"Received {diff} of token {mint} on {addr}"
-                    await bot.send_message(chat_id=chat_id, text=text)
+                    if diff > MIN_AMOUNT:
+                        text = f"Received {diff} of token {mint} on {addr}"
+                        await bot.send_message(chat_id=chat_id, text=text)
+
+                # Sent tokens out (only if delta > MIN_AMOUNT)
                 elif amt < prev_amt:
                     diff = prev_amt - amt
-                    text = f"Sent {diff} of token {mint} on {addr}"
-                    await bot.send_message(chat_id=chat_id, text=text)
+                    if diff > MIN_AMOUNT:
+                        text = f"Sent {diff} of token {mint} on {addr}"
+                        await bot.send_message(chat_id=chat_id, text=text)
+
             token_balances = {m: a for m, a in curr.items() if a > 0}
             await asyncio.sleep(POLL_INTERVAL)
 
@@ -225,9 +236,7 @@ async def stop(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # --- Main Entrypoint ---
 def main():
-    # Start the uptime web server thread
     threading.Thread(target=run_web_server, daemon=True).start()
-    # Build and start the Telegram bot
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("stop", stop))
@@ -237,3 +246,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
