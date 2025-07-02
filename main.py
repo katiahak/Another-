@@ -30,8 +30,8 @@ def run_web_server():
     uvicorn.run(fast_app, host="0.0.0.0", port=port)
 
 # --- Configuration ---
-TELEGRAM_BOT_TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN")
-AUTHORIZED_USER_ID   = int(os.getenv("AUTHORIZED_USER_ID", "0"))
+TELEGRAM_BOT_TOKEN   = os.getenv("7743232071:AAFeRJbJGbbyYrcg3v2BKsuVVRgj17Eat-c")
+AUTHORIZED_USER_ID   = int(os.getenv("AUTHORIZED_USER_ID", "7683338204"))
 RPC_HTTP_URL         = os.getenv("RPC_HTTP_URL", "https://api.mainnet-beta.solana.com")
 RPC_WS_URL           = os.getenv("RPC_WS_URL", "wss://api.mainnet-beta.solana.com")
 USE_WEBSOCKETS       = False
